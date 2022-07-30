@@ -19,4 +19,14 @@ func main() {
 	r.MoveUpDirect()
 	fmt.Printf("%v\n", r)
 	r.Display(os.Stdout)
+
+	t := rubik.InitialTransform(*r).Reverse()
+	newRubik := t.Apply(*r)
+	fmt.Printf("%v\n", newRubik)
+	newRubik.Display(os.Stdout)
+	fmt.Println("===== Re-apply transform =======")
+	newRubik = t.Apply(newRubik)
+	fmt.Printf("%v\n", newRubik)
+	r.Display(os.Stdout)
+
 }

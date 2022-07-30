@@ -38,3 +38,54 @@ func flip(orientedElem int, flip int) int {
 	}
 	return orientedElem
 }
+
+func NewTransform(from Rubik, to Rubik) Transform {
+	return InitialTransform(from).Reverse().Then(InitialTransform(to))
+}
+
+func InitialTransform(to Rubik) Transform {
+	st := make(Transform, 0)
+	for i, v := range to[:nbCorner] {
+		me := MoveElem{i, v % nbCorner, v - (v % nbCorner)}
+		if me.from != me.to || me.flip != 0 {
+			st = append(st, me)
+		}
+	}
+	for i, v := range to[bordersIdxOffset:centersIdxOffset] {
+		me := MoveElem{i - bordersIdxOffset, v % nbBorder, v - (v % nbBorder)}
+		if me.from != me.to || me.flip != 0 {
+			st = append(st, me)
+		}
+	}
+	for i, v := range to[centersIdxOffset:] {
+		me := MoveElem{i - centersIdxOffset, v, 0}
+		if me.from != me.to || me.flip != 0 {
+			st = append(st, me)
+		}
+	}
+	return st
+}
+
+func (t Transform) Reverse() Transform {
+	rt := make(Transform, len(t))
+	for i, me := range t {
+		rt[i] = MoveElem{me.to, me.from, reverseFlip(me.flip)}
+	}
+	return rt
+}
+
+func reverseFlip(flip int) int {
+	switch flip {
+	case 8:
+		return 16
+	case 16:
+		return 8
+	default:
+		return flip
+	}
+}
+
+func (t Transform) Then(next Transform) Transform {
+	combineTransform := next // TODO: not yet implemented
+	return combineTransform
+}
