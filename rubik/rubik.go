@@ -8,51 +8,40 @@ import (
 	"strings"
 )
 
-type MoveElem struct {
-	from int
-	to   int
-	flip int
-}
-
-type Transform []MoveElem
-
-type Rubik struct {
-	corners []int
-	borders []int
-	centers []int
-}
-
-type Move func()
+type Rubik []int
 
 const nbCorner = 8
 const cornerSize = 3
 const nbBorder = 12
 const borderSize = 2
 const nbCenter = 6
+const bordersIdxOffset = 8
+const centersIdxOffset = 20
 
 var loadingSequence []int
 var cornersMap map[string]int
 var bordersMap map[string]int
 var centersMap map[string]int
+
 var unloadingSequence []int
 var reverseCornersMap []string
 var reverseBordersMap []string
 var reverseCentersMap []string
-var moveMap map[string]Move
 
-//          00 01 02
-//				  03 04 05
-// 				  06 07 08
+//             00 01 02
+//             03 04 05
+//             06 07 08
 //
-//09 10 11  12 13 14  15 16 17  18 19 20
-//21 22 23  24 25 26  27 28 29  30 31 32
-//33 34 35  36 37 38  39 40 41  42 43 44
+//   09 10 11  12 13 14  15 16 17  18 19 20
+//   21 22 23  24 25 26  27 28 29  30 31 32
+//   33 34 35  36 37 38  39 40 41  42 43 44
 //
-//          45 46 47
-//	 	  		48 49 50
-//	 				51 52 53
+//             45 46 47
+//             48 49 50
+//             51 52 53
 
 func init() {
+
 	loadingSequence = make([]int, 54)
 	unloadingSequence = make([]int, 54)
 	copy(loadingSequence, []int{
@@ -109,7 +98,6 @@ func init() {
 	log.Printf("borders map : %v\n", bordersMap)
 	log.Printf("center map : %v\n", centersMap)
 
-	moveMap = make(map[string]Move, 12)
 }
 
 func NewRubik(r io.Reader) *Rubik {
@@ -130,47 +118,59 @@ func NewRubik(r io.Reader) *Rubik {
 	for k, v := range loadingSequence {
 		elems[k] = bytes[v]
 	}
-	corners := make([]int, nbCorner)
+	rubik := make(Rubik, nbCorner+nbBorder+nbCenter)
+	corners := rubik[:8]
 	for idCorner := 0; idCorner < nbCorner; idCorner++ {
 		i := idCorner * cornerSize
 		cornerString := string([]byte{elems[i], elems[i+1], elems[i+2]})
 		corners[idCorner] = cornersMap[cornerString]
 		log.Printf("Loading corner %v with %v = %v\n", idCorner, cornerString, corners[idCorner])
 	}
-	borders := make([]int, nbBorder)
+	borders := rubik[8:20]
 	for idBorder := 0; idBorder < nbBorder; idBorder++ {
 		i := (nbCorner * cornerSize) + (idBorder * borderSize)
 		borderString := string([]byte{elems[i], elems[i+1]})
 		borders[idBorder] = bordersMap[borderString]
 		log.Printf("Loading border %v with %v = %v\n", idBorder, borderString, borders[idBorder])
 	}
-	centers := make([]int, nbCenter)
+	centers := rubik[20:]
 	for idCenter := 0; idCenter < nbCenter; idCenter++ {
 		i := (nbCorner * cornerSize) + (nbBorder * borderSize) + idCenter
 		centers[idCenter] = centersMap[string([]byte{elems[i]})]
 		log.Printf("Loading center %v : %v\n", idCenter, centers[idCenter])
 	}
-	return &Rubik{corners, borders, centers}
+
+	return &rubik
+}
+
+func (r *Rubik) corner(id int) int {
+	return (*r)[id]
+}
+func (r *Rubik) border(id int) int {
+	return (*r)[id+bordersIdxOffset]
+}
+func (r *Rubik) center(id int) int {
+	return (*r)[id+centersIdxOffset]
 }
 
 func (r *Rubik) unload() []string {
 	ul := make([]byte, 54)
 	for idCorner := 0; idCorner < nbCorner; idCorner++ {
-		s := reverseCornersMap[r.corners[idCorner]]
+		s := reverseCornersMap[r.corner(idCorner)]
 		i := idCorner * cornerSize
 		ul[loadingSequence[i]] = s[0]
 		ul[loadingSequence[i+1]] = s[1]
 		ul[loadingSequence[i+2]] = s[2]
 	}
 	for idBorder := 0; idBorder < nbBorder; idBorder++ {
-		s := reverseBordersMap[r.borders[idBorder]]
+		s := reverseBordersMap[r.border(idBorder)]
 		i := nbCorner*cornerSize + idBorder*borderSize
 		ul[loadingSequence[i]] = s[0]
 		ul[loadingSequence[i+1]] = s[1]
 	}
 	for idCenter := 0; idCenter < nbCenter; idCenter++ {
 		i := nbCorner*cornerSize + nbBorder*borderSize + idCenter
-		ul[loadingSequence[i]] = reverseCentersMap[r.centers[idCenter]][0]
+		ul[loadingSequence[i]] = reverseCentersMap[r.center(idCenter)][0]
 	}
 	ulStringSize := 3
 	unload := make([]string, 18)
@@ -209,7 +209,6 @@ func (rubik *Rubik) Display(out io.Writer) {
 	fmt.Fprintf(out, "    %s\n    %s\n    %s\n", r[15], r[16], r[17])
 }
 
-func (r Rubik) MoveUpDirect() {
-	r.corners[0], r.corners[1], r.corners[3], r.corners[2] = rc(r.corners[2]), rc(r.corners[0]), irc(r.corners[1]), irc(r.corners[3])
-	r.borders[0], r.borders[1], r.borders[2], r.borders[3] = fb(r.borders[3]), fb(r.borders[0]), fb(r.borders[1]), fb(r.borders[2])
+func (rubik *Rubik) MoveUpDirect() {
+	*rubik = U.Apply(*rubik)
 }
